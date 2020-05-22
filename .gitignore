@@ -1,0 +1,6 @@
+#data_NSA
+/classes/nsaSrc/data/external/wiki-news-300d-1M.magnitude
+sessData/*
+documents_paper_topic_assignment.json
+sess_UMAPsav
+topics_papers_assignment.json
