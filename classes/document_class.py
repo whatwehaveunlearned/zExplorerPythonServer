@@ -132,13 +132,10 @@ class Document:
                     this_topic_vector.append(self.words[self.words['word*']==word]['vector'].values.tolist()[0])
             #After geting the vector per word we avg them to get a single vector per topic
             topics_average_vector.extend(numpy.mean(this_topic_vector,axis=0))
-        # return numpy.mean(topic_average_vector, axis=0)
         return topics_average_vector
 
     def calculate_doc_models(self):
-        # pdb.set_trace()
         #doc structure
-        # pdb.set_trace()
         self.toc = self.get_toc(self.folder + '/documents/' + self.pdf_file +'.pdf') #If I have toc I can loop to get the different sections (for latter)
         #doc abstract text
         self.abstract = self.text[self.text.find('abstract'):self.text.find('introduction')]
@@ -152,8 +149,6 @@ class Document:
             self.conclusion = self.text[self.text.find('conclusion'):last_reference_ocurrence]
             if len(self.conclusion) == 0:
                 self.conclusion = self.text[self.text.find('conclusions'):last_reference_ocurrence]
-        # #Text vector Too big full text
-        # self.bert_vector = bc.encode([self.text])[0].tolist()
         #Title vector
         self.title_vector = bc.encode([self.title])[0]
         #Abstract Vector
@@ -164,13 +159,6 @@ class Document:
             self.abstract = self.text[:1500]
             self.abstract_vector = self.calculate_bert(self.abstract)
             # pdb.set_trace()
-        #Conclusion Vector
-        # if(len(self.conclusion)>0):
-        #     self.conclusion_vector = self.calculate_bert(self.conclusion)
-        # else:
-        #     print  ('Error parsing conclusion is empty')
-        #     self.conclusion_vector = False
-        #     # pdb.set_trace()
         #Topics
         self.topics = self.get_topics()
         #Create topic vector

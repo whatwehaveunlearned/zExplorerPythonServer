@@ -41,6 +41,7 @@ class Session:
         self.vectors2D_topics = False
         self.encoder = False
         self.text_max_length = 0;
+        self.lastStepDocuments = pd.DataFrame()
         #Initialize Values, now I always initialize session from scratch but store things in global so I load global
         if session_id == 'globalSess':
             try:
@@ -70,6 +71,12 @@ class Session:
         doc_to_add = doc.create_document_msg()
         document = pd.DataFrame([doc_to_add],columns=doc_to_add.keys(),index=[doc_to_add['globalID']])
         self.documents = self.documents.append(document)
+
+    def addDocLastStep(self, doc):
+        """ Function to add a new document to the session """
+        doc_to_add = doc.create_document_msg()
+        document = pd.DataFrame([doc_to_add],columns=doc_to_add.keys(),index=[doc_to_add['globalID']])
+        self.lastStepDocuments = self.lastStepDocuments.append(document)
 
     def storeSessData(self):
         '''Store Session'''
@@ -172,8 +179,6 @@ class Session:
             self.topic_UMAP = umap.UMAP(n_neighbors=3, n_components=2, metric='euclidean')
         #Filter False Values
         clean_bert_vectors = doc_dictionary['abstract_vector'][doc_dictionary['abstract_vector']!= False]
-        # clean_bert_abstracts= doc_dictionary['abstract_vector'][doc_dictionary['abstract_vector']!= False]
-        # clean_bert_conclusions = doc_dictionary['conclusion_vector'][doc_dictionary['conclusion_vector']!= False]
         clean_topic_vectors = doc_dictionary['topics_vector'][doc_dictionary['topics_vector']!=False]
         #Since text are different sizes we need to set them to the same size. We extend smaller vectors to the size of the longest by duplicating its content.
         if self.text_max_length == 0:
@@ -195,17 +200,6 @@ class Session:
             topic_length = clean_topic_vectors.apply(lambda x: len(x))
             self.topic_min_length = topic_length.min()
         clean_topic_vectors = clean_topic_vectors.apply(lambda x: x[:self.topic_min_length])
-        #since abstract and conclusions are different sizes I need to set them all to same size I find smallest and cut the rest
-        # if self.abstract_conclusion_min_length == 0:
-        #     abstract_lenght = clean_bert_abstracts.apply(lambda x: len(x))
-        #     conclusion_length = clean_bert_conclusions.apply(lambda x: len(x))
-        #     abstract_min_length = abstract_lenght.min()
-        #     conclusion_min_length = conclusion_length.min()
-        #     self.abstract_conclusion_text_min_length = min([abstract_min_length,conclusion_min_length])
-        # clean_bert_abstracts = clean_bert_abstracts.apply(lambda x: x[:self.abstract_conclusion_text_min_length])
-        # clean_bert_conclusions = clean_bert_conclusions.apply(lambda x: x[:self.abstract_conclusion_text_min_length])
-        #Calculate Vectors
-        # pdb.set_trace()
         if self.encoder == False :
             print('Encoder has not been trained yet so Using UMAP for fitting')
             vectors_list = clean_bert_vectors.values.tolist()
@@ -213,15 +207,14 @@ class Session:
             self.UMAP = self.UMAP.fit(vectors_list)
             self.topic_UMAP = self.topic_UMAP.fit(topics_list)
             vec_2d = self.UMAP.transform(vectors_list)
+            vec_2d_UMAP = vec_2d
             vec_topic_2d = self.topic_UMAP.transform(topics_list)
         else:
             print('Using Enconder to Fit')
             papers_to_fit_indexes = doc_dictionary[doc_dictionary.isna().any(axis=1)].index.values.tolist()
             papers_to_fit = clean_bert_vectors.loc[papers_to_fit_indexes]
-            # pdb.set_trace()
             try:
                 new_projections = self.encoder.transform(np.array(papers_to_fit.values.tolist()))
-                # pdb.set_trace()
             except ValueError:
                 print('error')
                 pdb.set_trace()
@@ -229,33 +222,20 @@ class Session:
             papers_to_fit_topics = clean_topic_vectors.loc[papers_to_fit_indexes]
             new_projections = self.topic_UMAP.transform(papers_to_fit_topics.values.tolist())
             vec_topic_2d = np.append(self.vectors2D_topics,new_projections,axis=0)
-            # vec_2d = self.UMAP.transform(clean_bert_vectors.values.tolist())
-            # vec_topic_2d = self.topic_UMAP.transform(clean_topic_vectors.values.tolist())
+            # We also train UMAP for comparison
+            vectors_list = clean_bert_vectors.values.tolist()
+            # self.UMAP = self.UMAP.fit(vectors_list)
+            vec_2d_UMAP = self.UMAP.transform(vectors_list)
         #Store values for subsequent runs
         self.vectors2D = vec_2d
         self.vectors2D_topics = vec_topic_2d
-        # SECTIONS PART COMMENTED RIGHT NOW I HAVE TO SEE IF I WILL USE THIS OR NOT
-        # #put abstract and conclusion  together to project 
-        # abstract_and_conclusion_to_project = clean_bert_abstracts.append(clean_bert_conclusions)
-        # #convert to DataFrame to keep indexes when I merge below
-        # pdb.set_trace()
-        # abstract_and_conclusion_to_project_df = pd.DataFrame(abstract_and_conclusion_to_project, columns=['original_vector'])
-        # abstract_and_conclusion_2D = fit.fit_transform(abstract_and_conclusion_to_project.values.tolist()) 
-        # #add to Dataframe 
-        # abstract_and_conclusion_to_project_df['2D'] = abstract_and_conclusion_2D.tolist()
-        # #separate them to put back into pandas
-        # abstract_vec_2d = abstract_and_conclusion_to_project_df['2D'].iloc[ :len(clean_bert_abstracts)]
-        # conclusion_vec_2d = abstract_and_conclusion_to_project_df['2D'].iloc[len(clean_bert_abstracts): ]
         #add to pandas columns
         doc_dictionary['vec_2d'] = vec_2d.tolist()
         doc_dictionary['vec_topic_2d']= vec_topic_2d.tolist()
-        # doc_dictionary['abstract_2d'] = abstract_vec_2d
-        # doc_dictionary['conclusion_2d'] = conclusion_vec_2d
+        doc_dictionary['vec_2d_UMAP'] = vec_2d_UMAP.tolist()
         #change NA for false
         doc_dictionary['vec_2d'].fillna(False)
         doc_dictionary['vec_topic_2d'].fillna(False)
-        # doc_dictionary['abstract_2d'].fillna(False)
-        # doc_dictionary['conclusion_2d'].fillna(False)
         return doc_dictionary
 
         # conclusion_vec_2d.tolist()
@@ -271,27 +251,21 @@ class Session:
             return cosine_similarity(vect1,vect2)
         
         sess_topic_params = self.topic_params
-        # pdb.set_trace()
         for each_document in self.documents.iterrows():
             doc_topic_params_df = pd.DataFrame(each_document[1]['topic_params'])
             similarity_vector = []
             for each_topic in doc_topic_params_df.iterrows():
                 #We compare each topic in paper with session_topics if its above a threshold we assign the topic to paper
-                # pdb.set_trace()
                 similarity = sess_topic_params['vector300'].apply(calculate_cosine_similarity,vect2=each_topic[1]['vector300'],size=300)
                 #apply threshold
                 similarity = similarity.apply(lambda x: x[0][0] > 0.7) #returns true false vectors
                 similarity_vector.append(similarity)
-            # pdb.set_trace()
-            #sum(similarity_vector) collapses Trues and Falses but several trues are summed. I changed those to be 1.
             collapsed_similarity = sum(similarity_vector)
             collapsed_similarity = collapsed_similarity.where(collapsed_similarity==0,1) #Returns vector of ceros and ones
             sess_topic_params[each_document[1]['globalID']] = collapsed_similarity * sess_topic_params['weight']
-        # pdb.set_trace()
 
     def update_model(self,new_data):
         self.already_encoded_papers = new_data
-        # pdb.set_trace()
         #loop list of papers
         for index, row in new_data.iterrows():
             #Get from paper in session
@@ -301,24 +275,8 @@ class Session:
             this_paper.vec_2d[1] = new_data['y'][index]
         #Get 300Vectors and 2D Vectors
         clean_bert_vectors = self.documents['abstract_vector']
-        #Since text are different sizes we need to set them to the same size. We extend smaller vectors to the size of the longest by duplicating its content.
-        # text_lenght = clean_bert_vectors.apply(lambda x: len(x))
-        # self.text_max_length = text_lenght.max()
-        # for index, doc_vector in clean_bert_vectors.iteritems():
-        #     if len(doc_vector) > self.text_max_length:
-        #         print ("document" + index + "has a longer size than any in previous")
-        #         doc_vector = doc_vector[:self.text_max_length]
-        #     # pdb.set_trace()
-        #     if len(doc_vector) != self.text_max_length:
-        #         while True:
-        #             # pdb.set_trace()
-        #             size_to_extend = self.text_max_length - len(doc_vector)
-        #             doc_vector.extend(doc_vector[:size_to_extend])
-        #             if len(doc_vector) == self.text_max_length:
-        #                 break
         vec_2d = np.array(self.documents['vec_2d'].values.tolist())
         self.train_encoder(clean_bert_vectors,vec_2d)
-        # pdb.set_trace()
     
     def train_encoder(self,vectors,vec_2d):
         vectors_list = np.array(vectors.values.tolist())
