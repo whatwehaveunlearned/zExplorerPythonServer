@@ -63,6 +63,7 @@ class SageBrain(object):
         """ Brain Interface """
         if dataType == 'zoteroCollection':
             self.actualSession.lastStepDocuments = pd.DataFrame()
+            # pdb.set_trace()
             for index,each_doc in enumerate(metadata):
                 doc_in_sess = self.actualSession.docInSess(metadata[index]['key'])
                 doc_in_global = self.globalSess.docInSess(metadata[index]['key'])
@@ -78,11 +79,11 @@ class SageBrain(object):
                     doc_from_global = self.globalSess.returnDoc(metadata[index]['key'])
                     doc = Document(self.actualSession, 'name',  'key', 'inSession', "user", doc_from_global)
                     self.actualSession.addDoc(doc)
-                # Lastly we add to last step documents 
+                # Lastly we add to last step documents to know what documents are from this step.
                 self.actualSession.addDocLastStep(doc)
 
             #We get the topic and words Using Umap NSA algorithm and we include them into session
-            self.actualSession.get_topics(self.actualSession.documents)
+            # self.actualSession.get_topics(self.actualSession.documents)
         else:
             doc = Document(self.actualSession, fileName, doc_id, "doc", "user", False)
             self.actualSession.addDoc(doc)
@@ -96,8 +97,8 @@ class SageBrain(object):
         #Incrementally add new data from the collection for user studies
         pdb.set_trace()
 
-    def UpdateModel(self,new_paper_data):
-        self.actualSession.update_model(new_paper_data)
+    def UpdateModel(self,new_paper_data,step):
+        self.actualSession.update_model(new_paper_data,step)
         return self.actualSession.documents
 
         
@@ -148,6 +149,7 @@ async def handler(websocket,path):
         "message" : data_zotero,
         "type" : "collections"
     }))
+    # pdb.set_trace()
     consumer_task = asyncio.ensure_future(handle_message(websocket,path,server,step_count))
     done, pending = await asyncio.wait(
         [consumer_task],
@@ -157,12 +159,23 @@ async def handler(websocket,path):
             task.cancel()
 
 async def handle_message(websocket, path,server,step_count):
+    # #HardCoded Collections for User Study
+    # collection1 = 'DNUCZS2H'
+    # collection2 = '5WYEJX3C'
+    # collection3 = 'QFD2CSZY'
+    # collection4 = 'FCKVGI5M'
+    # collection5 = 'VGWP6JWE'
+
     #HardCoded Collections for User Study
-    collection1 = 'DNUCZS2H'
-    collection2 = '5WYEJX3C'
+    collection1 = 'VGWP6JWE'
+    collection2 = 'FCKVGI5M'
     collection3 = 'QFD2CSZY'
-    # collection1 = 'FCKVGI5M'
-    # collection2 = 'VGWP6JWE'
+    collection4 = '5WYEJX3C'
+    collection5 = 'DNUCZS2H'
+
+    # collection1 = 'B3RFB6H9'
+    # collection2 ='AVUHSXNZ'
+    # collection3 = '3JZ34V2D'
 
     #Retrieve Collection Elemets Zotero
     data_zotero = server.Zotero("getCollectionItems",collection1,False,False)
@@ -176,7 +189,8 @@ async def handle_message(websocket, path,server,step_count):
     #send Papers to Client
     message = server.DocInterface(False,'0','zoteroCollection',collection_items,'training')
     await websocket.send(json.dumps({
-        "message": {'documents':message['documents'].to_json(),'doc_topics':{'topics':message['doc_topics']['topics'].to_json(),'topic_params':message['doc_topics']['topic_params'].to_json(), 'order': message['doc_topics']['order'], 'words':message['doc_topics']['words']},'years':message['years'].to_json(),'authors':message['authors'].to_json()},
+        # "message": {'documents':message['documents'].to_json(),'doc_topics':{'topics':message['doc_topics']['topics'].to_json(),'topic_params':message['doc_topics']['topic_params'].to_json(), 'order': message['doc_topics']['order'], 'words':message['doc_topics']['words']},'years':message['years'].to_json(),'authors':message['authors'].to_json()},
+        "message": {'documents':message['documents'].to_json(),'doc_topics':{'topics':"message['doc_topics']['topics'].to_json()",'topic_params':"message['doc_topics']['topic_params'].to_json()", 'order': message['doc_topics']['order'], 'words':message['doc_topics']['words']},'years':message['years'].to_json(),'authors':message['authors'].to_json()},
         "type" : "sageBrain_data"
     }))
     while True:
@@ -190,6 +204,10 @@ async def handle_message(websocket, path,server,step_count):
                 data_zotero = server.Zotero("getCollectionItems",collection2,False,False)
             elif step_count == 2:
                 data_zotero = server.Zotero("getCollectionItems",collection3,False,False)
+            elif step_count == 3:
+                data_zotero = server.Zotero("getCollectionItems",collection4,False,False)
+            elif step_count == 4:
+                data_zotero = server.Zotero("getCollectionItems",collection5,False,False)
             collection_items = json.loads(data_zotero)
             pdf_ids = []
             for  i in range(0,len(collection_items)):
@@ -205,7 +223,9 @@ async def handle_message(websocket, path,server,step_count):
             # pdb.set_trace()
             #TOPICS AND WORDS DONT CHANGE SO WE JUST PASS THEM BACK
             new_paper_data = pd.DataFrame(json_message['msg']['papers'])
-            documents = server.UpdateModel(new_paper_data)
+            # pdb.set_trace()
+            documents = server.UpdateModel(new_paper_data,step_count)
+            # pdb.set_trace()
             await websocket.send(json.dumps({
                 "message": {'documents':documents.to_json()},
                 "type" : "update_model"
@@ -214,7 +234,8 @@ async def handle_message(websocket, path,server,step_count):
             # pdb.set_trace()
             message = server.send_current('training')
             await websocket.send(json.dumps({
-                "message": {'documents':message['documents'].to_json(),'doc_topics':{'topics':message['doc_topics']['topics'].to_json(),'topic_params':message['doc_topics']['topic_params'].to_json(), 'order': message['doc_topics']['order'], 'words':message['doc_topics']['words']},'years':message['years'].to_json(),'authors':message['authors'].to_json()},
+                # "message": {'documents':message['documents'].to_json(),'doc_topics':{'topics':message['doc_topics']['topics'].to_json(),'topic_params':message['doc_topics']['topic_params'].to_json(), 'order': message['doc_topics']['order'], 'words':message['doc_topics']['words']},'years':message['years'].to_json(),'authors':message['authors'].to_json()},
+                "message": {'documents':message['documents'].to_json(),'doc_topics':{'topics':"message['doc_topics']['topics'].to_json()",'topic_params':"message['doc_topics']['topic_params'].to_json()", 'order': message['doc_topics']['order'], 'words':message['doc_topics']['words']},'years':message['years'].to_json(),'authors':message['authors'].to_json()},
                 "type" : "sageBrain_data"
             }))
 
@@ -223,7 +244,7 @@ def main():
     asyncio.get_event_loop().run_until_complete(start_server)
     asyncio.get_event_loop().run_forever()
 
-server = SageBrain('sess4')
+server = SageBrain('sess5')
 #we use this for user inividual steps
 step_count = 0
 

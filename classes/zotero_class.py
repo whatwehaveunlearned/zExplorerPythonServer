@@ -63,6 +63,7 @@ class Zotero(object):
         #Create a pandas object
         df = pd.DataFrame(results)
         #Separate PDFS and data
+        # pdb.set_trace()
         pdfs = df.loc[df['contentType']== 'application/pdf']
         no_pdfs = df.loc[df['contentType']!= 'application/pdf']
         #We need to do the following merging in order to centralize all in one table.

@@ -160,9 +160,11 @@ class Document:
             self.abstract_vector = self.calculate_bert(self.abstract)
             # pdb.set_trace()
         #Topics
-        self.topics = self.get_topics()
+        # self.topics = self.get_topics()
+        self.topics = False
         #Create topic vector
-        self.topics_vector = self.topic_vector()
+        # self.topics_vector = self.topic_vector()
+        self.topics_vector = False
         # pdb.set_trace()
 
     def get_topics(self):
