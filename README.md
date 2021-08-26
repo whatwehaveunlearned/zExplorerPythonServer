@@ -6,7 +6,11 @@ This is the zEplorer Module for SAGEBRAIN.
 Project Organization
 ------------
 
-    ├── LICENSE
+    ├── classes
+    │   ├── external       <- Data from third party sources.
+    │   ├── interim        <- Intermediate data that has been transformed.
+    │   ├── processed      <- The final, canonical data sets for modeling.
+    │   └── raw            <- The original, immutable data dump.
     ├── Makefile           <- Makefile with commands like `make data` or `make train`
     ├── README.md    
 ├── classes 
