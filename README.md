@@ -6,6 +6,7 @@ This is the zEplorer Module for SAGEBRAIN.
 Project Organization
 ------------
 
+    ├── sageBrain.py                <- Server code. Need to change Zotero to point to your own zotero collection by editing variable self.Zotero
     ├── classes
     │   ├── author_class.py      
     │   ├── document_class.py       
