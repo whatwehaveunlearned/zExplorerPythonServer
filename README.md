@@ -4,7 +4,7 @@ Zexplorer SAGEBRAIN
 This is the zEplorer Module for SAGEBRAIN.
 ------------
 
--classes 
+├── classes 
   |-author_class.py
   |-document_class.py
   |-encoder_class.py
