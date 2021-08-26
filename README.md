@@ -3,10 +3,12 @@ Zexplorer SAGEBRAIN
 
 This is the zEplorer Module for SAGEBRAIN.
 ------------
+Project Organization
+------------
 
-├── LICENSE
+    ├── LICENSE
     ├── Makefile           <- Makefile with commands like `make data` or `make train`
-    ├── README.md          <- The top-level README for developers using this project.
+    ├── README.md    
 ├── classes 
   |-author_class.py
   |-document_class.py
